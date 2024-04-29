@@ -11,7 +11,9 @@
     href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"
+  integrity="sha512-LhccdVNGe2QMEfI3x4DVV3ckMRe36TfydKss6mJpdHjNFiV07dFpS2xzeZedptKZrwxfICJpez09iNioiSZ3hA=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <style>
   body {
@@ -105,10 +107,6 @@
       width: 25vw;
       color: #fbecfb;
       margin: auto;
-
-      >a {
-        /* padding-left: 0vw; */
-      }
     }
 
     .info {
@@ -148,11 +146,13 @@
     max-width: 85vw;
     border-radius: 10px;
     border: 2px solid #800080;
+    justify-content: center;
+
     /* background-color: black; */
     .input {
       height: 2rem;
       font-size: 1rem;
-      width: 80vw;
+      width: 70vw;
       text-align: left;
       padding-left: 20px;
       border-radius: 5px;
@@ -182,11 +182,7 @@
 
   <!-- 3x3 grid -->
   <div class="grid">
-    <div class="entry">Hello</div>
-    <div class="entry">World!</div>
-    <div class="entry">How</div>
-    <div class="entry">Are</div>
-    <div class="entry">
+    <div class="entry" style="display: none;">
       <div class="itemheader" draggable="true">
         <div><strong>Latest AI models</strong></div>
         <div style="">⚙️</div>
@@ -214,6 +210,36 @@
       </div>
     </div>
     <div class="entry newEntry">➕</div>
+
+    <script>
+      const converter = new showdown.Converter()
+      const md = text => converter.makeHtml(text)
+      const demoBody = `
+* **Detail:** Meta's latest open-source large language model (LLM) family
+* **Release date:** Public announcement not specified, but builds upon prior iteration, Llama 2, released earlier
+* **Key feature:** Freely available for research and commercial use
+* **Improvement over Llama 2:** 
+    * Larger vocabulary for better text encoding (128,256 tokens vs. 32,000)
+    * Enhanced handling of longer contexts with Grouped-Query Attention (GQA)
+    * Strong performance on benchmarks measuring comprehension, reasoning, and knowledge retrieval 
+`
+      const blockEntries = [
+        { name: 'Latest AI models', body: md(demoBody) }
+      ]
+      for (const blockEntry of blockEntries) {
+        const header = document.createElement('div')
+        header.className = 'itemheader'
+        header.draggable = true
+        header.innerHTML = `<div><strong>${blockEntry.name}</strong></div><div>⚙️</div>`
+        const body = document.createElement('div')
+        body.innerHTML = blockEntry.body
+        const entry = document.createElement('div')
+        entry.className = 'entry'
+        entry.appendChild(header)
+        entry.appendChild(body)
+        document.querySelector('.grid').appendChild(entry)
+      }
+    </script>
   </div>
 
   <dialog id="dialog" class="modal animate__animated animate__fadeInUp animate__faster">
@@ -222,7 +248,7 @@
         <button>X</button>
       </div>
     </form>
-    <br style="height: 40px;"/>
+    <br style="height: 40px;" />
 
     <style>
       .message {
@@ -234,6 +260,37 @@
           font-weight: bold;
         }
       }
+
+      /* #stage2 {
+        >label {
+          margin: 0.5rem;
+        }
+      } */
+
+      #stage2confirm {
+        margin: 1rem;
+        text-align: center;
+
+        >button {
+          margin-left: -2rem;
+          font-size: 1rem;
+          text-align: center;
+          height: 2rem;
+          width: 25vw;
+          background-color: purple;
+          border-radius: 5px;
+          color: white;
+          /* border: 1px solid purple; */
+          border: none;
+
+          &:hover {
+            cursor: pointer;
+            background-color: rgb(97, 1, 97);
+            /* color: purple; */
+            transition: background-color 0.5s;
+          }
+        }
+      }
     </style>
 
     <div class="messages">
@@ -243,36 +300,72 @@
       </div>
       <div class="message">
         <div class="role">Model</div>
-        <div class="contents">Sure, here's some recent news I found that might be related to your query. Please select all the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what you're looking for.
+        <div class="contents">Sure, here's some recent news I found that might be related to your query. Please confirm
+          the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what
+          you're looking for.
           <br>
-          <!-- make a 3x3 table  -->
-          <table>
-            <tr>
-              <td>Reddit</td>
-              <td>Twitter (X)</td>
-              <td>News Media</td>
-            </tr>
-            <tr>
-              <td><input type="checkbox" name="" id=""> <strong>r/singularity</strong> - LLaMA 3, now with 160K+ context. <br/>
-                <small>Posted by u/ai_enthusiast</small>
-              </td>
-              <td>@tsnuchia</td>
-              <td>6</td>
-            </tr>
-            <tr>
-              <td>7</td>
-              <td>8</td>
-              <td>9</td>
-            </tr>
-          </table>
+          <div id="stage2"></div>
+          <div id="stage2confirm" style="display: none;">
+            <button onclick="confirmStage2()">OK</button>
+          </div>
         </div>
       </div>
 
+      <script>
+        const data = {
+          'Reddit': [
+            [0, '<b>r/singularity</b> - LLaMA 3, now with 160K+ context. Posted by u/ai_enthusiast'],
+            [1, '<b>r/ai</b> - Phi 3, the latest iteration of the Phi series, is now available for download. Posted by u/ai_enthusiast'],
+          ],
+          'Twitter / X': [
+            [2, '<b>@tsnuchia</b> - Just read about LLaMA 3, the latest model from Meta. Looks like it has some cool new features! #ai #nlp'],
+            [3, '<b>@ai_enthusiast</b> - Phi 3 is out! Check out the latest iteration of the Phi series for some cool new features. #ai #nlp'],
+          ]
+        }
+
+        function confirmStage2() {
+          document.getElementById('stage2confirm').style.display = 'none'
+          document.getElementById('modal-input-box').style.display = 'block'
+          document.getElementById('stage2').innerHTML = ''
+        }
+
+        function loadStage2(data) {
+          document.getElementById('stage2confirm').style.display = 'block'
+          document.getElementById('modal-input-box').style.display = 'none'
+          for (const key in data) {
+            const items = data[key]
+            const div = document.createElement('div')
+            div.innerText = key
+            div.style.fontWeight = 'bold'
+            div.style.padding = '0.5rem'
+            document.getElementById('stage2').appendChild(div)
+            for (const [id, text] of items) {
+              const div = document.createElement('div')
+              const input = document.createElement('input')
+              input.type = 'checkbox'
+              input.id = id
+              div.appendChild(input)
+              const label = document.createElement('label')
+              label.htmlFor = id
+              label.innerHTML = text
+              div.appendChild(label)
+              document.getElementById('stage2').appendChild(div)
+            }
+          }
+        }
+
+        setTimeout(() => {
+          loadStage2(data)
+        }, 100)
+      </script>
+
     </div>
 
-    <div>
-      <input class="input" type="text" placeholder="Type in a message here" onclick="window.openSearch()" />
-      <button class="send-button">Send</button>
+    <div style="display:flex;justify-content: space-around">
+      <div id="modal-input-box">
+        <input class="input" type="text" placeholder="Type in a message here" onclick="window.openSearch()" />
+        <button class="send-button">Send</button>
+      </div>
     </div>
   </dialog>
 
