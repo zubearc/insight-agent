@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "langxlang": "^0.7.0",
+    "node-html-parser": "^6.1.13",
     "puppeteer": "^22.7.1",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",

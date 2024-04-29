@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+</head>
+<style>
+  body {
+    font-family: Poppins, sans-serif;
+    padding: 0;
+    margin: 0;
+  }
+
+  .grid {
+    margin: 1rem;
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 0px 0px;
+    grid-template-areas:
+      ". . ."
+      ". . ."
+      ". . .";
+  }
+
+  /* resize the grid to 2 columns if the screen is small */
+  @media (max-width: 1200px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr 1fr;
+      gap: 0px 0px;
+      grid-template-areas:
+        ". ."
+        ". ."
+        ". ."
+        ". .";
+    }
+  }
+
+  /* resize the grid to 1 column if screen is smaller */
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
+      gap: 0px 0px;
+      grid-template-areas:
+        "."
+        "."
+        "."
+        "."
+        ".";
+    }
+  }
+
+  .grid>div {
+    justify-content: center;
+    align-items: center;
+    /* border: 1px solid purple; */
+    border-radius: 5px;
+    padding: 1rem;
+
+    &:hover {
+      background-color: rgb(255, 229, 253);
+      cursor: pointer;
+      transition: background-color 0.25s;
+    }
+
+    &:drop {
+      background-color: rgb(255, 229, 253);
+    }
+  }
+
+  .newEntry {
+    font-size: 2rem;
+    display: flex;
+  }
+
+  /* remove some padding from lists */
+  ul {
+    padding-left: 20px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: purple;
+    padding: 12px;
+
+    .title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      text-align: left;
+      /* margin-bottom: 1rem; */
+      width: 25vw;
+      color: #fbecfb;
+      margin: auto;
+
+      >a {
+        /* padding-left: 0vw; */
+      }
+    }
+
+    .info {
+      width: 25vw;
+      text-align: right;
+      color: #fbecfb;
+    }
+
+    .input {
+      height: 2.5rem;
+      width: 40vw;
+      text-align: center;
+      border-radius: 10px;
+      /* purple border */
+      border: 2px solid #800080;
+      background-color: #f0f0f0;
+      cursor: pointer;
+      font-family: Poppins, sans-serif;
+
+      &:hover {
+        background-color: white;
+        transition: background-color 0.5s;
+      }
+    }
+  }
+
+  .itemheader {
+    display: flex;
+    justify-content: space-between;
+    background-color: purple;
+    color: white;
+    border-radius: 5px;
+    padding: 0.5rem;
+  }
+
+  .modal {
+    max-width: 85vw;
+    border-radius: 10px;
+    border: 2px solid #800080;
+    /* background-color: black; */
+    .input {
+      height: 2rem;
+      font-size: 1rem;
+      width: 80vw;
+      text-align: left;
+      padding-left: 20px;
+      border-radius: 5px;
+      /* purple border */
+      border: 1px solid #800080;
+    }
+
+    .send-button {
+      height: 2.2rem;
+      padding: 0.5rem;
+      border: none;
+      border-radius: 5px;
+      background-color: purple;
+      color: white;
+    }
+  }
+</style>
+
+<body>
+  <div class="header">
+    <div class="title"><a>Insight</a></div>
+    <!-- create an input box -->
+    <input class="input" type="text" placeholder="I'm looking for..." onclick="window.openSearch()" />
+    <div class="info"><strong>Now</strong>: <span id=timenow>...</span><br />
+      Last Updated 25m ago</div>
+  </div>
+
+  <!-- 3x3 grid -->
+  <div class="grid">
+    <div class="entry">Hello</div>
+    <div class="entry">World!</div>
+    <div class="entry">How</div>
+    <div class="entry">Are</div>
+    <div class="entry">
+      <div class="itemheader" draggable="true">
+        <div><strong>Latest AI models</strong></div>
+        <div style="">⚙️</div>
+      </div>
+      <div>
+        <!-- Latest models: Llama 3, Phi 3 -->
+        <ul>
+          <li>Llama 3<br>
+            <ul>
+              <li><strong>Detail:</strong> Meta&#39;s latest open-source large language model (LLM) family</li>
+              <li><strong>Release date:</strong> Public announcement not specified, but builds upon prior iteration,
+                Llama 2, released earlier</li>
+              <li><strong>Key feature:</strong> Freely available for research and commercial use</li>
+              <li><strong>Improvement over Llama 2:</strong>
+                <ul>
+                  <li>Larger vocabulary for better text encoding (128,256 tokens vs. 32,000)</li>
+                  <li>Enhanced handling of longer contexts with Grouped-Query Attention (GQA)</li>
+                  <li>Strong performance on benchmarks measuring comprehension, reasoning, and knowledge retrieval </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li>Phi 3</li>
+        </ul>
+      </div>
+    </div>
+    <div class="entry newEntry">➕</div>
+  </div>
+
+  <dialog id="dialog" class="modal animate__animated animate__fadeInUp animate__faster">
+    <form style="margin: 20px" method="dialog">
+      <div style="position: absolute; right: 18px; top: 18px;">
+        <button>X</button>
+      </div>
+    </form>
+    <br style="height: 40px;"/>
+
+    <style>
+      .message {
+        display: grid;
+        grid-template-columns: 1fr 8fr;
+        margin-bottom: 1rem;
+
+        .role {
+          font-weight: bold;
+        }
+      }
+    </style>
+
+    <div class="messages">
+      <div class="message">
+        <div class="role">User</div>
+        <div class="contents">Hello!</div>
+      </div>
+      <div class="message">
+        <div class="role">Model</div>
+        <div class="contents">Sure, here's some recent news I found that might be related to your query. Please select all the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what you're looking for.
+          <br>
+          <!-- make a 3x3 table  -->
+          <table>
+            <tr>
+              <td>Reddit</td>
+              <td>Twitter (X)</td>
+              <td>News Media</td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" name="" id=""> <strong>r/singularity</strong> - LLaMA 3, now with 160K+ context. <br/>
+                <small>Posted by u/ai_enthusiast</small>
+              </td>
+              <td>@tsnuchia</td>
+              <td>6</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>8</td>
+              <td>9</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div>
+      <input class="input" type="text" placeholder="Type in a message here" onclick="window.openSearch()" />
+      <button class="send-button">Send</button>
+    </div>
+  </dialog>
+
+  <script>
+    const dialog = document.getElementById('dialog')
+    dialog.addEventListener('close', () => {
+      // dialog.remove()
+    })
+    function openDialog() {
+      dialog.showModal()
+    }
+    openDialog()
+    const entries = [...document.querySelectorAll('.entry')]
+    entries.forEach(entry => {
+      entry.addEventListener('click', openDialog)
+    })
+
+    setInterval(() => {
+      document.getElementById('timenow').innerText = new Date().toLocaleString()
+    }, 1000)
+
+    function openSearch() {
+      openDialog()
+    }
+    window.openSearch = openSearch
+  </script>
+</body>
+
+</html>

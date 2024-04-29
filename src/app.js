@@ -1,10 +1,26 @@
 const { EventEmitter, once } = require('events')
 const { GoogleAIStudioCompletionService, CompletionService, ChatSession, tools } = require('langxlang')
+const DEBUGGING = true
 
 async function app (config, users) {
   const service = config.aisPort ? new GoogleAIStudioCompletionService(config.aisPort) : new CompletionService()
 
-  const s1SystemPrompt = tools.importPromptSync('./llm/s1Prompt.md')
+  async function s1CallSocialMedia (prompt) {
+    const prompt = tools.importPromptSync('./llm/s1Prompt.md', {
+      PROMPT: prompt
+    })
+    const [response] = await service.requestCompletion('gemini-1.5-pro-latest', null, prompt)
+    const [json] = tools.extractCodeblockFromMarkdown(response.text)
+    if (!json || json.lang !== 'json') {
+      return '<FUNCTION_OUTPUT>Error: Service is unavailable, try again</FUNCTION_OUTPUT>'
+    }
+    const parsed = JSON.parse(json.code)
+    if (parsed.message) {
+      return `<FUNCTION_OUTPUT>Error: ${parsed.message}</FUNCTION_OUTPUT>`
+    }
+  }
+
+  const s1SystemPrompt = tools.importRawSync('./llm/s1Prompt.md')
   async function stage1 (user, messages) {
     messages = structuredClone(messages)
     // const session = new ChatSession(service, 'gemini-1.5-pro-latest', s1SystemPrompt)
@@ -20,9 +36,9 @@ async function app (config, users) {
       }
     }, function chunk ({ content }) {
       aggregate += content
-      // if (aggregate.includes('<FUNCTION_CALL>')) {
-      //   return // function calls are internal to us
-      // }
+      if (!DEBUGGING && aggregate.includes('<FUNCTION_CALL>')) {
+        return
+      }
       user.send({ type: 'textCompleteChunk', content })
     })
 
@@ -30,9 +46,15 @@ async function app (config, users) {
     if (response.text.includes('<FUNCTION_CALL>')) {
       const call = tools.extractJSFunctionCall(response.text, '<FUNCTION_CALL>')
       console.log('CALL', call)
+      user.send({ type: 'switchStage', stage: 2 })
+      
     }
 
     user.send({ type: 'textComplete', content: response.text })
+  }
+
+  async function stage2 () {
+
   }
 
   users.on('join', (user) => {
