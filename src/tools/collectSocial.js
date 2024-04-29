@@ -21,14 +21,14 @@ async function getTweets (username) {
     const content = tweet.querySelector('.tweet-content')
     tweets.push(content.textContent)
   })
-  console.log('Tweets', tweets)
+  // console.log('Tweets', [username], tweets)
   return tweets.filter(tweet => tweet.length > 0).filter(tweet => !UNSAFE.some(word => tweet.toLowerCase().includes(word)))
 }
 
 async function getPostsOnSubreddit (subreddit) {
   let i = 0
   const allTitles = {}
-  const posts = await fetch(`https://www.reddit.com/r/${sub}.json`).then(res => res.json())
+  const posts = await fetch(`https://www.reddit.com/r/${subreddit}.json`).then(res => res.json())
   const titles = posts.data.children.map(post => ({ i: i++, title: post.data.title, url: post.data.url, created: post.data.created, comments_url: post.data.permalink }))
   console.log(titles)
   for (const title of titles) {
@@ -40,25 +40,26 @@ async function getPostsOnSubreddit (subreddit) {
 async function build (fromSearch) {
   const results = []
   let md = ''
-  for (const query of fromSearch.query) {
-    if (platform === 'reddit') {
+  for (const query of fromSearch.queries) {
+    if (query.platform === 'reddit') {
       md += `## r/${query.subreddit} on Reddit\n`
       const posts = await getPostsOnSubreddit(query.subreddit)
-      for (const post of posts) {
-        md += `### ${results.length + 1}\n${post.title}`
-        results.push({ title: post.title, id: results.length + 1, platform: 'reddit' })
+      for (const title in posts) {
+        const post = posts[title]
+        md += `\n### ${results.length + 1}\n${post.title}`
+        results.push({ handle: query.subreddit, title: post.title, id: results.length + 1, platform: 'reddit' })
       }
-    } else if (platform === 'twitter') {
-      md += `## @${query.username} on X (Twitter)\n`
-      const tweets = await getTweets(query.username)
+    } else if (query.platform === 'twitter') {
+      md += `## @${query.handle} on X (Twitter)\n`
+      const tweets = await getTweets(query.handle)
       for (let i = 0; i < tweets.length; i++) {
         const tweet = tweets[i]
-        md += `### ${results.length + 1}\n${tweet}`
-        results.push({ title: tweet, id: results.length + 1, platform: 'twitter' })
+        md += `\n### ${results.length + 1}\n${tweet}`
+        results.push({ handle: query.handle, title: tweet, id: results.length + 1, platform: 'twitter' })
       }
     }
   }
-  return md
+  return { md, results }
 }
 
 const MOCK_stage2data = {
@@ -71,26 +72,21 @@ const MOCK_stage2data = {
     [3, '<b>@ai_enthusiast</b> - Phi 3 is out! Check out the latest iteration of the Phi series for some cool new features. #ai #nlp'],
   ]
 }
-async function buildObject (fromSearch) {
+
+async function buildObject (buildResult) {
   const results = {
     'Reddit': [],
     'Twitter / X': []
   }
-  for (const query of fromSearch.query) {
-    if (query.platform === 'reddit') {
-      const posts = await getPostsOnSubreddit(query.subreddit)
-      for (const post of posts) {
-        results['Reddit'].push([results['Reddit'].length, post.title])
-      }
-    } else if (query.platform === 'twitter') {
-      const tweets = await getTweets(query.username)
-      for (let i = 0; i < tweets.length; i++) {
-        const tweet = tweets[i]
-        results['Twitter / X'].push([results['Twitter / X'].length, tweet])
-      }
+  for (const result of buildResult) {
+    const title = result.handle + ' - ' + result.title
+    if (result.platform === 'reddit') {
+      results['Reddit'].push([result.id, title])
+    } else if (result.platform === 'twitter') {
+      results['Twitter / X'].push([result.id, title])
     }
-  
   }
+  return results
 }
 
 async function test () {
@@ -110,5 +106,6 @@ if (require.main === module) {
 module.exports = {
   getTweets,
   getPostsOnSubreddit,
-  build
+  build, // for us
+  buildObject // for frontend
 }

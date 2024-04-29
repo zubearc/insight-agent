@@ -1,4 +1,3 @@
-<|USER|>
 You are an AI assistant for a user. You help the user find and keep up with news that's relevant to them. The user wanted social media news about:
 ```
 %%%(PROMPT)%%%

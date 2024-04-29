@@ -1,17 +1,26 @@
+const fs = require('fs')
 const { EventEmitter, once } = require('events')
 const { GoogleAIStudioCompletionService, CompletionService, ChatSession, tools } = require('langxlang')
 const ws = require('ws')
 const socials = require('./tools/collectSocial')
 const DEBUGGING = true
 
+const key = fs.readFileSync('./__key.key', 'utf-8').trim()
+
 async function app (config, users) {
-  const service = config.aisPort ? new GoogleAIStudioCompletionService(config.aisPort) : new CompletionService()
+  const service = config.aisPort ? new GoogleAIStudioCompletionService(config.aisPort) : new CompletionService({ gemini: key })
 
   async function s2CallSocialMedia (user, prompt) {
-    const modelPrompt = tools.importPromptSync('./llm/s2Prompt.md', {
+    const modelPrompt = tools.importPromptSync('./llm/s2PromptSocial.md', {
       PROMPT: prompt
     })
-    const [response] = await service.requestCompletion('gemini-1.5-pro-latest', null, modelPrompt)
+    fs.writeFileSync('__s2Request.md', modelPrompt.valueOf())
+    const [response] = await service.requestCompletion('gemini-1.5-pro-latest', null, modelPrompt, null, {
+      generationOptions: {
+        temperature: 0
+      },
+      enableCaching: true
+    })
     fs.writeFileSync('__s2Response.md', response.text)
     const [json] = tools.extractCodeblockFromMarkdown(response.text)
     if (!json || json.lang !== 'json') {
@@ -21,36 +30,45 @@ async function app (config, users) {
     if (parsed.message) {
       return user.send({ type: 'insertDialogue', role: 'user', content: `<FUNCTION_OUTPUT>Error: ${parsed.message}</FUNCTION_OUTPUT>` })
     }
-    const md = socials.build(parsed)
-    user.send({ type: 'switchStage', stage: 2 })
-    return s3CallSocialMedia(prompt, json.code, md)
+    // console.log('S2 Parsed', parsed)
+    const build = await socials.build(parsed)
+    return await s3CallSocialMedia(user, prompt, json.code, build)
   }
 
-  async function s3CallSocialMedia (s1Prompt, s2Response, s2CompiledOut) {
+  async function s3CallSocialMedia (user, s1Prompt, s2Response, s2CompiledOut) {
+    // console.log('S2 Compiled', s2CompiledOut)
     const prompt = tools.importPromptSync('./llm/s3PromptSocial.md', {
       PROMPT: s1Prompt,
       STAGE2: s2Response,
-      COLLECTED_SOCIALS: s2CompiledOut
+      COLLECTED_SOCIALS: s2CompiledOut.md
     })
-    const [response] = await service.requestCompletion('gemini-1.gemini-1.5-pro-latest', null, prompt)
+    fs.writeFileSync('__s3Request.md', prompt.valueOf())
+    const [response] = await service.requestCompletion('gemini-1.5-pro-latest', null, prompt, null, {
+      enableCaching: true
+    })
     fs.writeFileSync('__s3Response.md', response.text)
     const [md] = tools.extractCodeblockFromMarkdown(response.text)
-    const parsed = tools._parseMarkdown(md.code)
-    console.log('Parsed', parsed)
+    const relevant = md.code.split('\n').filter(l => l.startsWith('##')).map(l => l.replace('##', '').trim())
+    // console.log('Relevant', md, relevant)
+    // console.log('Collected', relevant.map(e => s2CompiledOut.results[e]))
+    const filteredS2 = relevant.map(e => s2CompiledOut.results[e])
+    const buildFrontend = await socials.buildObject(filteredS2)
+    user.send({ type: 'switchStage', stage: 2, buildFrontend })
   }
 
   const s1SystemPrompt = tools.importRawSync('./llm/s1Prompt.md')
   async function stage1 (user, messages) {
     messages = structuredClone(messages)
-    // const session = new ChatSession(service, 'gemini-1.5-pro-latest', s1SystemPrompt)
     if (!messages.every(message => ['user', 'assistant'].includes(message.role))) {
       return user.kill('Bad request')
     }
     messages.unshift({ role: 'system', content: s1SystemPrompt })
     let aggregate = ''
     const id = Date.now()
-    const [response] = await service.requestChatCompletion('gemini-1.5-pro-latest', {
+    fs.writeFileSync('__s1Request.json', JSON.stringify(messages, null, 2))
+    const responses = await service.requestChatCompletion('gemini-1.5-pro-latest', {
       messages,
+      enableCaching: true,
       generationOptions: {
         stopSequences: ['</FUNCTION_CALL>']
       }
@@ -61,11 +79,12 @@ async function app (config, users) {
       }
       user.send({ type: 'textCompleteChunk', content, id })
     })
-
+    const [response] = responses
+    fs.writeFileSync('__s1Response.md', response.text)
     console.log('Response', response.text)
     if (response.text.includes('<FUNCTION_CALL>')) {
       const call = tools.extractJSFunctionCall(response.text, '<FUNCTION_CALL>')
-      console.log('CALL', call)
+      console.log('Call result', call)
       if (call.name === 'get_social_media_news') {
         const result = await s2CallSocialMedia(user, call.args[0])
         user.send({ type: 'textComplete', content: result, id })
@@ -75,10 +94,6 @@ async function app (config, users) {
     if (responseText.trim()) {
       user.send({ type: 'textComplete', content: responseText.trim(), id })
     }
-  }
-
-  async function stage2 () {
-
   }
 
   users.on('join', (user) => {
@@ -123,12 +138,12 @@ function test () {
       { role: 'user', content: 'Hello' }
     ]
     user.emit('textCompleteRequest', { stage: 1, messages })
-    const { content } = await once(user, 'textComplete')
-    console.log('Done 1!')
-    messages.push({ role: 'assistant', content })
-    messages.push({ role: 'user', content: 'Can you show me the latest tweets from Elon?' })
+    const [result1] = await once(user, 'textComplete')
+    console.log('Done 1!', result1)
+    messages.push({ role: 'assistant', content: result1.content })
+    messages.push({ role: 'user', content: 'Can you show me the latest tweets from Elon Musk?' })
     user.emit('textCompleteRequest', { stage: 1, messages })
-    const { content: content2 } = await once(user, 'textComplete')
+    const [{ content: content2 }] = await once(user, 'textComplete')
     console.log('Result', content2)
   }
 }
