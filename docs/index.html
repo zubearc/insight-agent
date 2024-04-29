@@ -12,8 +12,8 @@
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"
-  integrity="sha512-LhccdVNGe2QMEfI3x4DVV3ckMRe36TfydKss6mJpdHjNFiV07dFpS2xzeZedptKZrwxfICJpez09iNioiSZ3hA=="
-  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    integrity="sha512-LhccdVNGe2QMEfI3x4DVV3ckMRe36TfydKss6mJpdHjNFiV07dFpS2xzeZedptKZrwxfICJpez09iNioiSZ3hA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <style>
   body {
@@ -188,7 +188,6 @@
         <div style="">⚙️</div>
       </div>
       <div>
-        <!-- Latest models: Llama 3, Phi 3 -->
         <ul>
           <li>Llama 3<br>
             <ul>
@@ -223,9 +222,23 @@
     * Enhanced handling of longer contexts with Grouped-Query Attention (GQA)
     * Strong performance on benchmarks measuring comprehension, reasoning, and knowledge retrieval 
 `
-      const blockEntries = [
-        { name: 'Latest AI models', body: md(demoBody) }
+      const DEMO_ENTRIES = [
+        {
+          name: 'Latest AI models',
+          body: md(demoBody),
+          with: {
+            checkFrequency: 15 * 60 * 1000,
+            query: 'Latest AI models',
+            sources: {
+              reddit: ['singularity', 'ai'],
+              twitter: ['tsnuchia', 'ai_enthusiast']
+            }
+          }
+        }
       ]
+      const blockEntries = window.localStorage.getItem('blockEntries')
+        ? JSON.parse(window.localStorage.getItem('blockEntries'))
+        : DEMO_ENTRIES
       for (const blockEntry of blockEntries) {
         const header = document.createElement('div')
         header.className = 'itemheader'
@@ -258,14 +271,9 @@
 
         .role {
           font-weight: bold;
+          text-transform: capitalize;
         }
       }
-
-      /* #stage2 {
-        >label {
-          margin: 0.5rem;
-        }
-      } */
 
       #stage2confirm {
         margin: 1rem;
@@ -294,72 +302,124 @@
     </style>
 
     <div class="messages">
-      <div class="message">
+      <!-- <div class="message">
         <div class="role">User</div>
         <div class="contents">Hello!</div>
       </div>
       <div class="message">
         <div class="role">Model</div>
-        <div class="contents">Sure, here's some recent news I found that might be related to your query. Please confirm
-          the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what
-          you're looking for.
-          <br>
-          <div id="stage2"></div>
-          <div id="stage2confirm" style="display: none;">
-            <button onclick="confirmStage2()">OK</button>
-          </div>
-        </div>
-      </div>
+        <div class="contents"></div>
+      </div> -->
+    </div>
+    <script>
+      const stage2Message = `Sure, here's some recent news I found that might be related to your query. Please confirm the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what you're looking for.`
+      const MOCK_stage2data = {
+        'Reddit': [
+          [0, '<b>r/singularity</b> - LLaMA 3, now with 160K+ context. Posted by u/ai_enthusiast'],
+          [1, '<b>r/ai</b> - Phi 3, the latest iteration of the Phi series, is now available for download. Posted by u/ai_enthusiast'],
+        ],
+        'Twitter / X': [
+          [2, '<b>@tsnuchia</b> - Just read about LLaMA 3, the latest model from Meta. Looks like it has some cool new features! #ai #nlp'],
+          [3, '<b>@ai_enthusiast</b> - Phi 3 is out! Check out the latest iteration of the Phi series for some cool new features. #ai #nlp'],
+        ]
+      }
+      const MOCK_STAGE1 = [
+        { role: 'user', content: 'Hello!' },
+        {
+          role: 'model', stage2data: MOCK_stage2data, htmlContent: stage2Message + `<br/><div id="stage2"></div>
+        <div id="stage2confirm" style="display: none;">
+          <button onclick="confirmStage2()">OK</button>
+        </div>` }
+      ]
+      const stage1data = []
 
-      <script>
-        const data = {
-          'Reddit': [
-            [0, '<b>r/singularity</b> - LLaMA 3, now with 160K+ context. Posted by u/ai_enthusiast'],
-            [1, '<b>r/ai</b> - Phi 3, the latest iteration of the Phi series, is now available for download. Posted by u/ai_enthusiast'],
-          ],
-          'Twitter / X': [
-            [2, '<b>@tsnuchia</b> - Just read about LLaMA 3, the latest model from Meta. Looks like it has some cool new features! #ai #nlp'],
-            [3, '<b>@ai_enthusiast</b> - Phi 3 is out! Check out the latest iteration of the Phi series for some cool new features. #ai #nlp'],
-          ]
-        }
-
-        function confirmStage2() {
-          document.getElementById('stage2confirm').style.display = 'none'
-          document.getElementById('modal-input-box').style.display = 'block'
-          document.getElementById('stage2').innerHTML = ''
-        }
-
-        function loadStage2(data) {
-          document.getElementById('stage2confirm').style.display = 'block'
-          document.getElementById('modal-input-box').style.display = 'none'
-          for (const key in data) {
-            const items = data[key]
-            const div = document.createElement('div')
-            div.innerText = key
-            div.style.fontWeight = 'bold'
-            div.style.padding = '0.5rem'
-            document.getElementById('stage2').appendChild(div)
-            for (const [id, text] of items) {
-              const div = document.createElement('div')
-              const input = document.createElement('input')
-              input.type = 'checkbox'
-              input.id = id
-              div.appendChild(input)
-              const label = document.createElement('label')
-              label.htmlFor = id
-              label.innerHTML = text
-              div.appendChild(label)
-              document.getElementById('stage2').appendChild(div)
-            }
+      function loadStage1(messages) {
+        // clear existing messages
+        document.querySelector('.messages').innerHTML = ''
+        for (const message of messages) {
+          const div = document.createElement('div')
+          div.className = 'message'
+          const role = document.createElement('div')
+          role.className = 'role'
+          role.innerText = message.role
+          div.appendChild(role)
+          const contents = document.createElement('div')
+          contents.className = 'contents'
+          contents.id = 'contents-' + message.id
+          contents.innerHTML = message.htmlContent || message.content
+          div.appendChild(contents)
+          document.querySelector('.messages').appendChild(div)
+          if (message.stage2data) {
+            loadStage2(stage2data)
           }
         }
+      }
 
-        setTimeout(() => {
-          loadStage2(data)
-        }, 100)
-      </script>
+      function updateStage1Message(msg) {
+        const message = stage1data.find(m => m.id === msg.id)
+        message.content = msg.content
+        const $contents = document.getElementById('contents-' + msg.id)
+        if ($contents) {
+          $contents.innerHTML = message.htmlContent || message.content
+        }
+      }
 
-    </div>
+      function addStage1Message(msg) {
+        stage1data.push(msg)
+      }
+
+      function confirmStage2() {
+        document.getElementById('stage2confirm').style.display = 'none'
+        document.getElementById('modal-input-box').style.display = 'block'
+        document.getElementById('stage2').innerHTML = ''
+      }
+
+      function loadStage2(data) {
+        document.getElementById('stage2confirm').style.display = 'block'
+        document.getElementById('modal-input-box').style.display = 'none'
+        for (const key in data) {
+          const items = data[key]
+          const div = document.createElement('div')
+          div.innerText = key
+          div.style.fontWeight = 'bold'
+          div.style.padding = '0.5rem'
+          document.getElementById('stage2').appendChild(div)
+          for (const [id, text] of items) {
+            const div = document.createElement('div')
+            const input = document.createElement('input')
+            input.type = 'checkbox'
+            input.id = id
+            div.appendChild(input)
+            const label = document.createElement('label')
+            label.htmlFor = id
+            label.innerHTML = text
+            div.appendChild(label)
+            document.getElementById('stage2').appendChild(div)
+          }
+        }
+      }
+
+      const ws = new WebSocket('ws://localhost:8082')
+      ws.onopen = () => {
+        console.log('Connected!')
+        // ws.send(JSON.stringify({ type: 'stage1', data: stage1data }))
+      }
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.type === 'textCompleteStart') {
+          stage1data.push({ role: 'model', content: '', id: data.id })
+        } else if (data.type === 'textCompleteChunk') {
+          updateStage1Message(data)
+        } else if (data.type === 'textCompleteResponse') {
+          updateStage1Message(data)
+        }
+      }
+
+      setTimeout(() => {
+        loadStage1(stage1data)
+        // loadStage2(stage2data)
+      }, 100)
+    </script>
 
     <div style="display:flex;justify-content: space-around">
       <div id="modal-input-box">
