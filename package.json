@@ -26,7 +26,7 @@
     "standard": "^17.0.0"
   },
   "dependencies": {
-    "langxlang": "^0.7.0",
+    "langxlang": "github:extremeheat/LXL#tool-update2",
     "node-html-parser": "^6.1.13",
     "puppeteer": "^22.7.1",
     "puppeteer-extra": "^3.3.6",

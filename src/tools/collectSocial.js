@@ -46,7 +46,7 @@ async function build (fromSearch) {
       const posts = await getPostsOnSubreddit(query.subreddit)
       for (const post of posts) {
         md += `### ${results.length + 1}\n${post.title}`
-        results.push(post.title)
+        results.push({ title: post.title, id: results.length + 1, platform: 'reddit' })
       }
     } else if (platform === 'twitter') {
       md += `## @${query.username} on X (Twitter)\n`
@@ -54,10 +54,43 @@ async function build (fromSearch) {
       for (let i = 0; i < tweets.length; i++) {
         const tweet = tweets[i]
         md += `### ${results.length + 1}\n${tweet}`
+        results.push({ title: tweet, id: results.length + 1, platform: 'twitter' })
       }
     }
   }
   return md
+}
+
+const MOCK_stage2data = {
+  'Reddit': [
+    [0, '<b>r/singularity</b> - LLaMA 3, now with 160K+ context. Posted by u/ai_enthusiast'],
+    [1, '<b>r/ai</b> - Phi 3, the latest iteration of the Phi series, is now available for download. Posted by u/ai_enthusiast'],
+  ],
+  'Twitter / X': [
+    [2, '<b>@tsnuchia</b> - Just read about LLaMA 3, the latest model from Meta. Looks like it has some cool new features! #ai #nlp'],
+    [3, '<b>@ai_enthusiast</b> - Phi 3 is out! Check out the latest iteration of the Phi series for some cool new features. #ai #nlp'],
+  ]
+}
+async function buildObject (fromSearch) {
+  const results = {
+    'Reddit': [],
+    'Twitter / X': []
+  }
+  for (const query of fromSearch.query) {
+    if (query.platform === 'reddit') {
+      const posts = await getPostsOnSubreddit(query.subreddit)
+      for (const post of posts) {
+        results['Reddit'].push([results['Reddit'].length, post.title])
+      }
+    } else if (query.platform === 'twitter') {
+      const tweets = await getTweets(query.username)
+      for (let i = 0; i < tweets.length; i++) {
+        const tweet = tweets[i]
+        results['Twitter / X'].push([results['Twitter / X'].length, tweet])
+      }
+    }
+  
+  }
 }
 
 async function test () {
@@ -70,7 +103,9 @@ async function test () {
   fs.writeFileSync('test.md', md)
 }
 
-test()
+if (require.main === module) {
+  test()
+}
 
 module.exports = {
   getTweets,

@@ -311,6 +311,13 @@
         <div class="contents"></div>
       </div> -->
     </div>
+    <div style="display:flex;justify-content: space-around">
+      <div id="modal-input-box">
+        <input class="input" id="modal-message" type="text" placeholder="Type in a message here"
+          onclick="window.openSearch()" />
+        <button class="send-button">Send</button>
+      </div>
+    </div>
     <script>
       const stage2Message = `Sure, here's some recent news I found that might be related to your query. Please confirm the ones that seem relevant to you. I'll use this to help deliver personalized suggestions based on what you're looking for.`
       const MOCK_stage2data = {
@@ -331,41 +338,66 @@
           <button onclick="confirmStage2()">OK</button>
         </div>` }
       ]
-      const stage1data = []
+      const stage1Messages = []
+
+      function pushStage1Message(message) {
+        const div = document.createElement('div')
+        div.className = 'message'
+        const role = document.createElement('div')
+        role.className = 'role'
+        role.innerText = message.role
+        div.appendChild(role)
+        const contents = document.createElement('div')
+        contents.className = 'contents'
+        contents.id = 'contents-' + message.id
+        contents.innerHTML = message.htmlContent || message.content
+        div.appendChild(contents)
+        document.querySelector('.messages').appendChild(div)
+        if (message.stage2data) {
+          loadStage2(stage2data)
+        }
+      }
 
       function loadStage1(messages) {
         // clear existing messages
         document.querySelector('.messages').innerHTML = ''
         for (const message of messages) {
-          const div = document.createElement('div')
-          div.className = 'message'
-          const role = document.createElement('div')
-          role.className = 'role'
-          role.innerText = message.role
-          div.appendChild(role)
-          const contents = document.createElement('div')
-          contents.className = 'contents'
-          contents.id = 'contents-' + message.id
-          contents.innerHTML = message.htmlContent || message.content
-          div.appendChild(contents)
-          document.querySelector('.messages').appendChild(div)
-          if (message.stage2data) {
-            loadStage2(stage2data)
+          pushStage1Message(message)
+        }
+      }
+
+      function updateStage1Message (msg) {
+        const message = stage1Messages.find(m => m.id === msg.id)
+        if (!message) {
+          pushStage1Message(msg)
+          return
+        }
+        message.content = msg.content
+        const $contents = document.getElementById('contents-' + msg.id)
+        if ($contents) {
+          if (message.delta) {
+            $contents.innerHTML += message.delta
+          } else {
+            $contents.innerHTML = message.htmlContent || message.content
           }
         }
       }
 
-      function updateStage1Message(msg) {
-        const message = stage1data.find(m => m.id === msg.id)
-        message.content = msg.content
-        const $contents = document.getElementById('contents-' + msg.id)
-        if ($contents) {
-          $contents.innerHTML = message.htmlContent || message.content
-        }
+      function lockMessageBar() {
+        document.getElementById('modal-message').disabled = true
+        document.getElementById('modal-message').placeholder = 'Waiting for response...'
+      }
+      function unlockMessageBar() {
+        document.getElementById('modal-message').disabled = false
+        document.getElementById('modal-message').placeholder = 'Type in a message here'
       }
 
-      function addStage1Message(msg) {
-        stage1data.push(msg)
+      function addStage1Message(msg, fromServer) {
+        stage1Messages.push(msg)
+        pushStage1Message(msg)
+        if (msg.role === 'user' && !fromServer) {
+          lockMessageBar() // lock the input box while waiting for a response
+        }
       }
 
       function confirmStage2() {
@@ -407,26 +439,36 @@
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)
         if (data.type === 'textCompleteStart') {
-          stage1data.push({ role: 'model', content: '', id: data.id })
+          stage1Messages.push({ role: 'model', content: '', id: data.id })
         } else if (data.type === 'textCompleteChunk') {
           updateStage1Message(data)
-        } else if (data.type === 'textCompleteResponse') {
+        } else if (data.type === 'textComplete') {
           updateStage1Message(data)
+          unlockMessageBar()
+        } else if (data.type === 'insertDialogue') {
+          addStage1Message(data, true)
+        } else if (data.type === 'switchStage') {
+          if (data.stage === 2) {
+            loadStage2(data.messages)
+          }
         }
       }
 
+      // push a message on enter press when the input box is focused
+      document.getElementById('modal-message').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const message = document.getElementById('modal-message').value
+          addStage1Message({ role: 'user', content: message, id: stage1Messages.length })
+          ws.send(JSON.stringify({ type: 'textCompleteRequest', stage: 1, messages: stage1Messages, id: stage1Messages.length }))
+          document.getElementById('modal-message').value = ''
+        }
+      })
+
       setTimeout(() => {
-        loadStage1(stage1data)
+        loadStage1(stage1Messages)
         // loadStage2(stage2data)
       }, 100)
     </script>
-
-    <div style="display:flex;justify-content: space-around">
-      <div id="modal-input-box">
-        <input class="input" type="text" placeholder="Type in a message here" onclick="window.openSearch()" />
-        <button class="send-button">Send</button>
-      </div>
-    </div>
   </dialog>
 
   <script>
