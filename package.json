@@ -28,7 +28,7 @@
   "dependencies": {
     "langxlang": "github:extremeheat/LXL#tool-update2",
     "node-html-parser": "^6.1.13",
-    "puppeteer": "^22.7.1",
+    "puppeteer": "^23.4.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "ws": "^8.17.0"
